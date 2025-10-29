@@ -1,0 +1,83 @@
+name: Finished Builds
+
+on:
+  push:
+    branches:
+        - main
+  pull_request:
+    types: [assigned]
+    branches:
+        - main
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Check changes :D
+        id: changes
+        run: |
+          if [[ `git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E -v ".\.md|\.github/|\.vscode/|\.gitignore|.\.ase|.\.aseprite"` ]] || [[ "${{ github.event_name }}" = "workflow_dispatch" ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "[DEBUG] - it should build :D"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "[DEBUG] - dont build >:("
+          fi
+  build:
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set current date as env variable # pacola if coyping from https://stackoverflow.com/questions/60942067/get-current-date-and-time-in-github-workflows was a challenge:
+        run: echo "NOW=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+
+      - name: do the thing pls
+        run: |
+          cd src/
+          zip -r ../DrumDash-${{ env.NOW }}.pk3 .
+
+      - name: send thing to the action tab
+        uses: actions/upload-artifact@v4
+        id: artifact-upload
+        with:
+          name: DrumDash
+          path: DrumDash-${{ env.NOW }}.pk3
+
+      - name: could you preetty please send the file to the discord
+        uses: sinshutu/upload-to-discord@master
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        with:
+          args: DrumDash-${{ env.NOW }}.pk3
+
+      - name: send the artifact link :P
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: "Ilshidur/action-discord@0c4b27844ba47cb1c7bee539c8eead5284ce9fa9"
+        with:
+          args: "Artifact can be found at [this cool link](${{ steps.artifact-upload.outputs.artifact-url }})"
+
+  commits:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: [check, build]
+
+    steps:
+      - name: gives us the commits pleaaase
+        uses: Sniddl/discord-commits@v1.6
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          message: "Successful commit to **${{ github.ref_name }}**"
+          template: "avatar-with-link"
+          include-extras: true
