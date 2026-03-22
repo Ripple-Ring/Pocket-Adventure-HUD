@@ -45,21 +45,21 @@ jobs:
       - name: do the thing pls
         run: |
           cd src/
-          zip -r ../DrumDash-${{ env.NOW }}.pk3 .
+          zip -r ../PocketAdventure-${{ env.NOW }}.pk3 .
 
       - name: send thing to the action tab
         uses: actions/upload-artifact@v4
         id: artifact-upload
         with:
-          name: DrumDash
-          path: DrumDash-${{ env.NOW }}.pk3
+          name: PocketAdventure
+          path: PocketAdventure-${{ env.NOW }}.pk3
 
       - name: could you preetty please send the file to the discord
         uses: sinshutu/upload-to-discord@master
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         with:
-          args: DrumDash-${{ env.NOW }}.pk3
+          args: PocketAdventure-${{ env.NOW }}.pk3
 
       - name: send the artifact link :P
         env:
